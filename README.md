@@ -15,9 +15,11 @@ lcoredump = require "lcoredump"
 lcoredump.register(11)
 ```
 
+you can call lcoredump.freopen to redirect stderr to a log file, see [test.lua](test.lua)
+
 before coredump file created, traceback for lua & c would be print into stderr.
 
-see test.lua
+see [test.lua](test.lua)
 ```
 Ctrl-C(SIGINT) or Ctrl-\(SIGTERM) please, traceback would be dumped to stderr
 ^\traceback:
