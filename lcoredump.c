@@ -87,6 +87,7 @@ static void signal_handler(int signum)
 	buf = malloc(MAX_BUF_SZ);
 	dump_lua_traceback(L, buf, MAX_BUF_SZ);
 	fprintf(stderr, "%s", buf);
+	fflush(stderr);
 	free(buf);
 
 	/* *nix only */
@@ -101,10 +102,19 @@ static int lua__register(lua_State *L)
 	return 0;
 }
 
+static int lua__freopen(lua_State *L)
+{
+	const char * filepath = luaL_checkstring(L, 1);
+	freopen(filepath, "a", stderr);
+	return 0;
+}
+
+
 int luaopen_lcoredump(lua_State* L)
 {
 	luaL_Reg lfuncs[] = {
 		{"register", lua__register},
+		{"freopen", lua__freopen},
 		{NULL, NULL},
 	};
 	luaL_newlib(L, lfuncs);
