@@ -19,9 +19,10 @@ you can call ```lcoredump.freopen``` to redirect stderr to a log file, see [test
 
 before coredump file created, traceback for lua & c would be print into stderr.
 
-# NOTICE!!!
+## NOTICE!!!
 lcoredump.set_show_var(flag) if flag is true, every variable in each stack frame would be shown, but easy to crash here again.
 
+## Example
 see [test.lua](test.lua)
 ```
 press Ctrl-C(SIGINT) or Ctrl-\(SIGTERM) please, traceback would be dumped to stderr
