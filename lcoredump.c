@@ -65,8 +65,12 @@ static size_t dump_lua_traceback(lua_State *L, char *buf, size_t sz, int is_show
 					    ar.short_src, ar.linedefined);
 		}
 
+		if (!lua_checkstack(L, 1)) /* to call lua_getlocal*/
+			continue;
+
 		i = 1;
 		while(is_show_var) {
+			const void *pointer;
 			int type;
 			lua_Debug arf;
 			const char *name = lua_getlocal(L, &ar, i++);
@@ -78,17 +82,33 @@ static size_t dump_lua_traceback(lua_State *L, char *buf, size_t sz, int is_show
 			pushfstring(buf, e, "\n\t%s(%s) : ", name, typename);
 			switch(type) {
 			case LUA_TFUNCTION:
+				pointer = lua_topointer(L, -1);
 				lua_getinfo(L, ">Snl", &arf);
 				if (*arf.what == 'C' || *arf.what == 't')
-					pushfstring(buf, e, "%s@C",
+					pushfstring(buf, e, "%p %s@C",
+						    pointer,
 						    (arf.name != NULL ? arf.name : "defined"));
 				else
-					pushfstring(buf, e, "%s@%s:%d",
+					pushfstring(buf, e, "%p %s@%s:%d",
+						    pointer,
 						    (arf.name != NULL ? arf.name : "defined"),
 						    arf.short_src, arf.linedefined);
 				break;
-			default:
+			case LUA_TBOOLEAN:
+				pushfstring(buf, e, "%s", lua_toboolean(L, 1) ? "true" : "false");
+				lua_pop(L, 1);
+				break;
+			case LUA_TNIL:
+				pushfstring(buf, e, "nil");
+				lua_pop(L, 1);
+				break;
+			case LUA_TNUMBER:
+			case LUA_TSTRING:
 				pushfstring(buf, e, "%s", lua_tostring(L, -1));
+				lua_pop(L, 1);
+				break;
+			default:
+				pushfstring(buf, e, "%p", lua_topointer(L, -1));
 				lua_pop(L, 1);
 				break;
 			}
@@ -144,8 +164,6 @@ static int lua__set_show_var(lua_State *L)
 	is_full_stack = lua_toboolean(L, 1);
 	return 0;
 }
-
-
 
 int luaopen_lcoredump(lua_State* L)
 {
