@@ -2,15 +2,16 @@
 #include <lauxlib.h>
 #include <stdlib.h>
 #include <stdio.h>
-
-/*for dump_c_traceback, *nix only */
-#include <execinfo.h>
-#include <unistd.h>
+#include <signal.h>
 
 #if LUA_VERSION_NUM < 502
 # ifndef luaL_newlib
 #  define luaL_newlib(L,l) (lua_newtable(L), luaL_register(L,NULL,l))
 # endif
+#endif
+
+#if (!(defined(WIN32) || defined(_WIN32)))
+# define ENABLE_C_TRACE
 #endif
 
 #define pushfstring(buf, e, fmt, ...) do{if(sz-e > 0) e+=snprintf(buf+e, sz-e, fmt, ##__VA_ARGS__);}while(0)
@@ -19,6 +20,22 @@
 
 #define MAX_BUF_SZ (1024 * 1024)
 #define MAX_FRAME_SZ 128
+
+/*for dump_c_traceback, *nix only */
+#ifdef ENABLE_C_TRACE
+#include <execinfo.h>
+#include <unistd.h>
+
+/* *nix only */
+void dump_c_traceback(int fd)
+{
+	void *frames[MAX_FRAME_SZ];
+	size_t frame_size;
+	frame_size = backtrace(frames, sizeof(frames) / sizeof(frames[0]));
+	/*you can also use backtrace_symbols here */
+	backtrace_symbols_fd(frames, frame_size, fd);
+}
+#endif /* endif for defined windows */
 
 /**
  * signal(SIGSEGV, crash_signal_handler);
@@ -118,16 +135,6 @@ static size_t dump_lua_traceback(lua_State *L, char *buf, size_t sz, int is_show
 	return e;
 }
 
-/* *nix only */
-void dump_c_traceback()
-{
-	void *frames[MAX_FRAME_SZ];
-	size_t frame_size;
-	frame_size = backtrace(frames, sizeof(frames) / sizeof(frames[0]));
-	/*you can also use backtrace_symbols here */
-	backtrace_symbols_fd(frames, frame_size, STDERR_FILENO);
-}
-
 static void signal_handler(int signum)
 {
 	lua_State *L = GlobalL;
@@ -140,8 +147,10 @@ static void signal_handler(int signum)
 	fflush(stderr);
 	free(buf);
 
+#ifdef ENABLE_C_TRACE
 	/* *nix only */
-	dump_c_traceback();
+	dump_c_traceback(STDERR_FILENO);
+#endif
 }
 
 static int lua__register(lua_State *L)
